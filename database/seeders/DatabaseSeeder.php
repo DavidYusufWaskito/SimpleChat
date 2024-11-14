@@ -14,9 +14,16 @@ class DatabaseSeeder extends Seeder
     {
         // \App\Models\User::factory(10)->create();
 
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
+        // \App\Models\User::factory(10)->create([
+        //     'name' => fake()->name(),
+        //     'email' => fake()->unique()->safeEmail(),
+        //     'password' => bcrypt('password'),
         // ]);
+        \App\Models\User::factory(5)->create()->each(function ($user) {
+            $user->name = fake()->name();
+            $user->email = fake()->unique()->safeEmail();
+            $user->password = bcrypt('password');
+        });
+        
     }
 }
