@@ -5,14 +5,53 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { generateRSAKeys,arrayBufferToBase64, storePrivateKey, exportPublicKeyArrayBuffer,exportPublicKeyJWK,exportPrivateKeyArrayBuffer,encryptPrivateKey} from '@/helper/cryptography';
+import axios from 'axios';
 
 export default function Register() {
+    const KeyPair = generateRSAKeys();
+    const SecretPassPhrase = import.meta.env.VITE_CHAT_PRIVATE_KEY_SECRET || 'secret_passphrase';
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         email: '',
         password: '',
         password_confirmation: '',
+        public_key: '',
+        private_key: '',
     });
+
+    // useEffect(() => {
+    //     KeyPair.then((keyPair) => {
+    //         exportPrivateKeyArrayBuffer(keyPair).then((exportedKey) => {
+    //             encryptPrivateKey(exportedKey, SecretPassPhrase).then((encryptedKey) => {
+    //                 setData('private_key', encryptedKey);
+    //             })
+    //         });
+    //         exportPublicKeyJWK(keyPair).then((exportedKey) => {
+    //             setData('public_key', JSON.stringify(exportedKey));
+    //         });
+    //     })
+    // },[]);
+    useEffect(() => {
+        KeyPair.then((keyPair) => {
+            const privateKeyPromise = exportPrivateKeyArrayBuffer(keyPair).then((exportedKey) =>
+                encryptPrivateKey(exportedKey, SecretPassPhrase)
+            );
+    
+            const publicKeyPromise = exportPublicKeyJWK(keyPair).then((exportedKey) =>
+                JSON.stringify(exportedKey)
+            );
+    
+            Promise.all([privateKeyPromise, publicKeyPromise]).then(([encryptedPrivateKey, exportedPublicKey]) => {
+                setData((prevData) => ({
+                    ...prevData,
+                    private_key: arrayBufferToBase64(encryptedPrivateKey),
+                    public_key: exportedPublicKey,
+                }));
+            });
+        });
+    }, []);
+    
 
     useEffect(() => {
         return () => {
@@ -23,7 +62,16 @@ export default function Register() {
     const submit = (e) => {
         e.preventDefault();
 
+        // generateRSAKeys().then((keyPair) => {
+        //     storePrivateKey(keyPair.privateKey);
+        //     exportPublicKeyArrayBuffer(keyPair).then((exportedKey) => {
+        //         console.log(exportedKey);
+        //         setData('public_key', exportedKey);
+        //     });
+            
+        // })
         post(route('register'));
+        console.log(data);
     };
 
     return (

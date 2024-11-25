@@ -2,36 +2,94 @@ import { useState,useEffect } from "react";
 import { Head } from "@inertiajs/react";
 import axios from "axios";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-export default function ChatPage({auth,receiverId,receiverName}) {
+import { generateRSAKeys,importPrivateKeyArrayBuffer,decryptPrivateKey,base64ToArrayBuffer,encryptMessage,decryptMessage,importPublicKeyJWK,exportPublicKeyArrayBuffer, importPublicKeyArrayBuffer, exportPublicKeyJWK,loadPrivateKey} from "@/helper/cryptography";
+export default function ChatPage({auth,receiverId,receiverName,receiverPublicKey}) {
     const [messages, setMessages] = useState([]);
     const [message, setMessage] = useState('');
-    // Get message from db (TEST)
+    const SecretPassPhrase = import.meta.env.VITE_CHAT_PRIVATE_KEY_SECRET || 'secret_passphrase';
+    console.log(auth.user.private_key);
+    // Get and decrypt message from db (TEST)
     useEffect(() => {
         axios.post('/event/messages', {
             SenderId: auth.user.id,
             ReceiverId: receiverId
-        }).then(res => {
+        }).then(async res => {
             console.log(res);
-            console.log(res.data.messages);
-            setMessages(res.data.messages);
+            const decryptedPrivateKey = await decryptPrivateKey(base64ToArrayBuffer(auth.user.private_key), SecretPassPhrase);
+            const privateKey = await importPrivateKeyArrayBuffer(decryptedPrivateKey);
+
+            console.log(privateKey);
+
+            // const decryptedMessages = await Promise.all(res.data.messages.filter(msg => msg.sender_id == auth.user.id || msg.receiver_id == auth.user.id).map(async (msg) => {
+            //     const decryptedSenderMessage = await decryptMessage(msg.sender_message,privateKey);
+            //     console.log(msg.receiver_message);
+            //     // const decryptedReceiverMessage = await decryptMessage(msg.receiver_message, privateKey);
+            //     return { ...msg, sender_message: decryptedSenderMessage};
+            // }));
+            const decryptedMessages = await Promise.all(
+                res.data.messages
+                    .filter(msg => msg.sender_id == auth.user.id || msg.receiver_id == auth.user.id)
+                    .map(async (msg) => {
+                        if (msg.sender_id == auth.user.id) {
+                            const decryptedSenderMessage = await decryptMessage(msg.sender_message, privateKey);
+                            return { ...msg, sender_message: decryptedSenderMessage };
+                        } else {
+                            const decryptedReceiverMessage = await decryptMessage(msg.receiver_message, privateKey);
+                            return { ...msg, receiver_message: decryptedReceiverMessage };
+                        }
+                    })
+            );
+            console.log(decryptedMessages);
+            setMessages(decryptedMessages);
         })
     },[])
 
     // Listen event
     useEffect(() => {
-        var listener = window.Echo.channel('test-channel.' + receiverId);
-        const callBack = (e) => {
+        var listener = window.Echo.private('chat-channel.' + auth.user.id);
+        const callBack = async (e) => {
+            // const privateKey = await loadPrivateKey();
+            const decryptedPrivateKey = await decryptPrivateKey(base64ToArrayBuffer(auth.user.private_key), SecretPassPhrase);
+            const privateKey = await importPrivateKeyArrayBuffer(decryptedPrivateKey);
+
             console.log('Event triggered');
             console.log(e);
-            setMessages((prevMessages) => [...prevMessages, {
-                message: e.message,
-                sender_id: e.senderId,
-                receiver_id: e.receiverId
-            }]);
+            if (e.receiverId == auth.user.id) {
+                const decryptedReceiverMessage = await decryptMessage(e.receiver_message, privateKey);
+                setMessages((prevMessages) => [...prevMessages, {
+                    
+                    sender_message: e.sender_message,
+                    receiver_message: decryptedReceiverMessage,
+                    sender_id: e.senderId,
+                    receiver_id: e.receiverId
+                }]);
+                console.log(decryptedReceiverMessage);
+            }
+            // const decryptedMessages = await Promise.all(
+            //     res.data.messages
+            //         .filter(msg => msg.sender_id == auth.user.id || msg.receiver_id == auth.user.id)
+            //         .map(async (msg) => {
+            //             if (msg.sender_id == auth.user.id) {
+            //                 const decryptedSenderMessage = await decryptMessage(msg.sender_message, privateKey);
+            //                 return { ...msg, sender_message: decryptedSenderMessage };
+            //             } else {
+            //                 const decryptedReceiverMessage = await decryptMessage(msg.receiver_message, privateKey);
+            //                 return { ...msg, receiver_message: decryptedReceiverMessage };
+            //             }
+            //         })
+            // );
+            // console.log(decryptedMessages);
+            // setMessages(decryptedMessages);
+
+            // setMessages((prevMessages) => [...prevMessages, {
+            //     message: e.message,
+            //     sender_id: e.senderId,
+            //     receiver_id: e.receiverId
+            // }]);
         }
-        listener.listen('TestEvent',callBack);
+        listener.listen('SendChatEvent',callBack);
         return () => {
-            listener.stopListening('TestEvent',callBack);
+            listener.stopListening('SendChatEvent',callBack);
         };
     },[auth.user.id]);
     useEffect(() => {
@@ -46,7 +104,7 @@ export default function ChatPage({auth,receiverId,receiverName}) {
         // });
         if (message === '') return;
         setMessages((prevMessages) => [...prevMessages, {
-            message: message,
+            sender_message: message,
             sender_id: auth.user.id,
             receiver_id: receiverId
         }])
@@ -54,14 +112,28 @@ export default function ChatPage({auth,receiverId,receiverName}) {
         axios.post('/event/test', {
             SenderId: auth.user.id,
             ReceiverId: receiverId,
-            message: message
+            receiver_message: message
         })
 
-        axios.post('/chat/send', {
-            SenderId: auth.user.id,
-            ReceiverId: receiverId,
-            message: message
-        });
+        // Real
+        importPublicKeyJWK(JSON.parse(receiverPublicKey)).then(imported => {
+            encryptMessage(message, imported).then((encryptedMessage) => {
+                importPublicKeyJWK(JSON.parse(auth.user.public_key)).then(senderimported => {
+                    encryptMessage(message, senderimported).then((encryptedSenderMessage) => {
+                        console.log(auth.user.public_key);
+                        console.log(receiverPublicKey);
+                        console.log(encryptedMessage);
+                        console.log(encryptedSenderMessage); 
+                        axios.post(route('chat.send'), {
+                            SenderId: auth.user.id,
+                            ReceiverId: receiverId,
+                            sender_message: encryptedSenderMessage,
+                            receiver_message:encryptedMessage
+                        });
+                    })
+                })
+            })
+        })
 
         setMessage('');
     }
@@ -82,7 +154,7 @@ export default function ChatPage({auth,receiverId,receiverName}) {
                             <div className={`relative bg-${msg.sender_id == auth.user.id ? 'blue-500' : 'gray-300'} dark:bg-${msg.sender_id == auth.user.id ? 'blue-800' : 'gray-700'} ${msg.sender_id == auth.user.id ? 'rounded-tl-lg rounded-bl-lg rounded-br-lg' : 'rounded-tr-lg rounded-bl-lg rounded-br-lg'} p-3 max-w-xs h-fit
 
                             `}>
-                                <p className={`break-words text-pretty overflow-hidden w-full text-${msg.sender_id == auth.user.id ? 'white' : 'black'} dark:text-${msg.sender_id == auth.user.id ? 'gray-200' : 'white'}`}>{msg.message}</p>
+                                <p className={`break-words text-pretty overflow-hidden w-full text-${msg.sender_id == auth.user.id ? 'white' : 'black'} dark:text-${msg.sender_id == auth.user.id ? 'gray-200' : 'white'}`}>{msg.sender_id == auth.user.id ? msg.sender_message : msg.receiver_message}</p>
                             </div>
                         </div>
                     ))}

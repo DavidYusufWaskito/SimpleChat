@@ -30,6 +30,10 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/cryptotest',function (){
+    return Inertia::render('Chat/CryptoTest');
+});
+
 Route::post('/event/test',[SendTestController::class,'SendTest']);
 Route::post('/event/messages',[SendTestController::class,'GetMessages']);
 
