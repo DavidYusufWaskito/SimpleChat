@@ -23,5 +23,6 @@ Broadcast::channel('test-channel', function ($user) {
 });
 
 Broadcast::channel('chat-channel.{idUser}', function ($user, $idUser) {
-    return (int) Auth::user()->id == (int) $idUser;
+    // return (int) Auth::user()->id == (int) $idUser;
+    return Auth::check();
 });

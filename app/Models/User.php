@@ -21,8 +21,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'public_key',
-        'private_key'
     ];
 
     /**
@@ -44,4 +42,9 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function Keypair()
+    {
+        return $this->hasOne(Keypair::class);
+    }
 }

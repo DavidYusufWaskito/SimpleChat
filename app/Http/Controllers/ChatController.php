@@ -15,8 +15,9 @@ class ChatController extends Controller
     public function index($receiverId)
     {
         $receiverUser = User::find($receiverId);
-        
-        return Inertia::render('Chat/ChatPage', ['receiverId' => $receiverId, 'receiverName' => $receiverUser->name,'receiverPublicKey' => $receiverUser->public_key]);
+        $receiverPublicKey = $receiverUser->Keypair->public_key;
+        // dd(['receiverPublicKey' => $receiverPublicKey, 'receiverPrivateKey' => $receiverUser->Keypair->private_key]);
+        return Inertia::render('Chat/ChatPage', ['senderPrivateKey' => auth()->user()->Keypair->private_key,'senderPublicKey' => auth()->user()->Keypair->public_key,'receiverId' => $receiverId, 'receiverName' => $receiverUser->name,'receiverPublicKey' => $receiverPublicKey]);
     }
 
     public function send(Request $request)
@@ -31,11 +32,28 @@ class ChatController extends Controller
         $chat->receiver_id = $receiverId;
         $chat->receiver_message = $ReceiverMessage;
         $chat->sender_message = $SenderMessage;
-        $chat->send_at = now();
+        $chat->send_at = now(config('app.timezone'));
         $chat->save();
         // Send chat event
-        SendChatEvent::dispatch($SenderMessage,$ReceiverMessage, $receiverId, $senderId);
+        SendChatEvent::dispatch($SenderMessage,$ReceiverMessage, $receiverId, $senderId, now(config('app.timezone')));
 
         return response()->json(['message' => 'Message sent successfully']);
+    }
+    public function GetMessages(Request $request)
+    {
+        $SenderId = $request->SenderId;
+        $ReceiverId = $request->ReceiverId;
+
+        $messages = Chat::where(function ($query) use ($SenderId, $ReceiverId) {
+            $query->where('sender_id', $SenderId)
+                ->where('receiver_id', $ReceiverId);
+        })->orWhere(function ($query) use ($SenderId, $ReceiverId) {
+            $query->where('sender_id', $ReceiverId)
+                ->where('receiver_id', $SenderId);
+        })->orderBy('send_at')->get();
+
+        return response()->json([
+            'messages' => $messages,
+        ], 200);
     }
 }

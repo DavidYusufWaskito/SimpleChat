@@ -17,16 +17,18 @@ class SendChatEvent implements ShouldBroadcast
     public $receiver_message;
     public $senderId;
     public $receiverId;
+    public $sendAt;
     /**
      * Create a new event instance.
      */
-    public function __construct($SenderMessage, $ReceiverMessage,$ReceiverId, $SenderId)
+    public function __construct($SenderMessage, $ReceiverMessage,$ReceiverId, $SenderId, $sendAt)
     {
         //
         $this->sender_message = $SenderMessage;
         $this->receiver_message = $ReceiverMessage;
         $this->receiverId = $ReceiverId;
         $this->senderId = $SenderId;
+        $this->sendAt = $sendAt;
     }
 
     /**

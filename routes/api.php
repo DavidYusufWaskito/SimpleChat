@@ -2,6 +2,9 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SendTestController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ContactController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,4 +19,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
+});
+
+Route::group(['middleware' => ['auth:sanctum']], function () {
+    // Route::post('/event/messages',[SendTestController::class,'GetMessages']);
+    Route::post('/messages',[ChatController::class,'GetMessages']);
+    Route::post('/chat', [ChatController::class, 'send'])->name('chat.send');
+    Route::post('/user/email/check',[ContactController::class,'CheckEmailExist'])->name('user.email.check');
 });
