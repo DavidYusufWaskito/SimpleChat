@@ -1,8 +1,10 @@
 import { useState,useEffect,createRef } from "react";
-import { Head } from "@inertiajs/react";
+import { Head, Link } from "@inertiajs/react";
 import axios from "axios";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { getContact } from "@/helper/contactdb";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { generateRSAKeys,importPrivateKeyArrayBuffer,decryptPrivateKey,base64ToArrayBuffer,encryptMessage,decryptMessage,importPublicKeyJWK,exportPublicKeyArrayBuffer, importPublicKeyArrayBuffer, exportPublicKeyJWK,loadPrivateKey} from "@/helper/cryptography";
 export default function ChatPage({auth,senderPrivateKey,senderPublicKey,receiverId,receiverPublicKey}) {
     const EndOfMessageRef = createRef();
@@ -11,12 +13,12 @@ export default function ChatPage({auth,senderPrivateKey,senderPublicKey,receiver
     const [message, setMessage] = useState('');
     const [typing, setTyping] = useState(false);
     const SecretPassPhrase = import.meta.env.VITE_CHAT_PRIVATE_KEY_SECRET || 'secret_passphrase';
-    // Get the contact from indexeddb
+    // Get the contact from indexeddb and read all message
     useEffect(() => {
-        
         getContact(parseInt(receiverId)).then(contact => {
             setReceiverName(contact.name);
         });
+        axios.put(route('messages.read.all',{SenderId: receiverId,ReceiverId: auth.user.id}));
     },[]);
 
     // Get and decrypt message from db (TEST)
@@ -76,7 +78,11 @@ export default function ChatPage({auth,senderPrivateKey,senderPublicKey,receiver
                     send_at : e.sendAt
                 }]);
                 console.log(decryptedReceiverMessage);
+                axios.put(route('messages.read.all',{SenderId: receiverId,ReceiverId: auth.user.id}));
+
             }
+
+            
         }
         listener.listen('SendChatEvent',callBack);
 
@@ -118,11 +124,11 @@ export default function ChatPage({auth,senderPrivateKey,senderPublicKey,receiver
             send_at: new Date()
         }])
         // Test
-        axios.post('/event/test', {
-            SenderId: auth.user.id,
-            ReceiverId: receiverId,
-            receiver_message: message
-        })
+        // axios.post('/event/test', {
+        //     SenderId: auth.user.id,
+        //     ReceiverId: receiverId,
+        //     receiver_message: message
+        // })
 
         // Real
         importPublicKeyJWK(JSON.parse(receiverPublicKey)).then(imported => {
@@ -161,8 +167,11 @@ export default function ChatPage({auth,senderPrivateKey,senderPublicKey,receiver
         user={auth.user}>
             <Head title="Chat" />
             <div className="sticky top-0 z-10 p-4 bg-white dark:bg-gray-800 shadow-md">
-                <div className="flex items-center">
+                <div className="flex justify-between items-center">
                     <p className="text-gray-900 dark:text-gray-100">{receiverName}</p>
+                    <Link href={route('dashboard')} className="text-gray-900 dark:text-gray-100">
+                        <FontAwesomeIcon icon={faArrowLeft} />
+                    </Link>
                 </div>
             </div>
             <div className="py-20">

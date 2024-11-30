@@ -56,4 +56,50 @@ class ChatController extends Controller
             'messages' => $messages,
         ], 200);
     }
+
+    public function ReadAllMessagesBySenderAndReceiverId($SenderId, $ReceiverId)
+    {
+        Chat::where('sender_id', $SenderId)
+            ->where('receiver_id', $ReceiverId)
+            ->update(['status' => 'read']);
+        
+        return response()->json([
+            'message' => 'Successfully read messages',
+        ]);
+    }
+
+    public function GetMessagesBySenderId($SenderId)
+    {
+        $messages = Chat::where('sender_id', $SenderId)->orderBy('send_at')->get();
+        
+        return response()->json([
+            'message' => 'Successfully retrieved messages',
+            'messages' => $messages,
+        ]);
+    }
+
+    public function GetUnreadMessagesBySenderId($SenderId)
+    {
+        $messages = Chat::where('sender_id', $SenderId)->where('status', 'unread')->orderBy('send_at')->get();
+        
+        return response()->json([
+            'message' => 'Successfully retrieved messages',
+            'messages' => $messages,
+        ]);
+    }
+
+    public function GetUnreadMessagesCountBySenderAndReceiverId($SenderId, $ReceiverId)
+    {
+        $count = Chat::where('sender_id', $SenderId)
+                     ->where('receiver_id', $ReceiverId)
+                     ->where('status', 'unread')
+                     ->count();
+        
+        return response()->json([
+            'message' => 'Successfully retrieved unread messages count',
+            'senderId' => (int)$SenderId,
+            'receiverId' => (int)$ReceiverId,
+            'count' => $count,
+        ]);
+    }
 }

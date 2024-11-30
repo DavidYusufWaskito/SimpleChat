@@ -26,4 +26,9 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::post('/messages',[ChatController::class,'GetMessages']);
     Route::post('/chat', [ChatController::class, 'send'])->name('chat.send');
     Route::post('/user/email/check',[ContactController::class,'CheckEmailExist'])->name('user.email.check');
+    
+    Route::get('/messages/by-sender/{SenderId}',[ChatController::class,'GetMessagesBySenderId'])->name('messages.by-sender');
+    Route::get('/messages/unread/by-sender/{SenderId}',[ChatController::class,'GetUnreadMessagesBySenderId'])->name('messages.unread.by-sender');
+    Route::get('/messages/unread/count/{SenderId}/{ReceiverId}',[ChatController::class,'GetUnreadMessagesCountBySenderAndReceiverId'])->name('messages.unread.count');
+    Route::put('/messages/read/all/{SenderId}/{ReceiverId}',[ChatController::class,'ReadAllMessagesBySenderAndReceiverId'])->name('messages.read.all');    
 });
