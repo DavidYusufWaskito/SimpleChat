@@ -5,19 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Chat extends Model
+class Keypair extends Model
 {
     use HasFactory;
-    
-    protected $table = "chat";
-    
+
+    protected $table = 'keypair';
     public $timestamps = false;
     protected $fillable = [
-        "sender_id",
-        "receiver_id",
-        "receiver_message",
-        "sender_message",
-        "status",
-        "send_at",
+        'user_id', 
+        'public_key', 
+        'private_key'
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

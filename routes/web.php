@@ -9,6 +9,7 @@ use App\Events\TestEvent;
 use Illuminate\Http\Request;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\SendTestController;
+use App\Http\Controllers\ContactController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +31,10 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/cryptotest',function (){
+    return Inertia::render('Chat/CryptoTest');
+});
+
 Route::post('/event/test',[SendTestController::class,'SendTest']);
 Route::post('/event/messages',[SendTestController::class,'GetMessages']);
 
@@ -46,7 +51,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/chat/{receiverId}', [ChatController::class, 'index'])->name('chat.index');
-    Route::post('/chat', [ChatController::class, 'send'])->name('chat.send');
+    Route::get('/contact/add', [ContactController::class, 'v_AddContact'])->name('contact.add');
+    // Route::post('/chat', [ChatController::class, 'send'])->name('chat.send');
 });
 
 require __DIR__.'/auth.php';
